@@ -150,3 +150,36 @@ docker compose down              # 加 -v 一并清数据卷
   *.mp4
   ```
 - **安全自检**：`docker history <img>` 无密钥；`git status` 不出现 `.env` 与大体积测试素材；MinIO 凭据只在运行时注入
+
+## 13. 农机预约调度（新增模块）
+
+农忙时几台农机在几块地之间轮着用：按时段预约、撞单拦截、故障改派、进度与忙闲可查。
+
+### 接口
+```
+POST   /api/v1/machines                          登记农机（name/model/kind，型号 model 是改派匹配依据）
+GET    /api/v1/machines?farm_id=                 农机列表
+GET    /api/v1/machines/:id                      农机详情
+POST   /api/v1/machines/:id/status               报障/维修/恢复 {"status":"available|maintenance|broken"}
+POST   /api/v1/machines/:id/reassign-remaining   把该机剩余预约逐条自动改派给同型号空闲机
+GET    /api/v1/machines/:id/daily-stats?date=YYYY-MM-DD  当天忙了多久/空着多久（UTC 自然日）
+GET    /api/v1/machines/:id/bookings?from=&to=   机器排班表
+POST   /api/v1/bookings                          按时段预约（machine_id/plot_id/work_step/step_seq/start_at/end_at）
+GET    /api/v1/bookings/:id                      预约详情
+POST   /api/v1/bookings/:id/status               开工/完工/取消 {"status":"in_progress|done|cancelled"}
+POST   /api/v1/bookings/:id/reassign             改派：{"machine_id":N} 指定机器；空 body 自动挑同型号空闲机；
+                                                 可带 start_at/end_at 改时段（不得打乱地块作业顺序）
+GET    /api/v1/plots/:id/work-progress           这块地的作业做到哪一步（步骤列表+当前步+完成数）
+```
+
+### 规则
+- **撞单拦截**：同一台机器时段重叠（半开区间 `[start_at, end_at)`，首尾相接不算撞）的预约返回 `409`，响应体 `data.conflicts` 列出撞上的预约明细；取消（`cancelled`）的预约不占时段。创建与改派都在事务内锁机器行复查，并发抢同一时段只有一单能成。
+- **地块作业顺序**：同一地块上 `step_seq` 小的作业必须先结束、大的必须更晚开始（`step_seq` 传 0 自动排到最后）；预约和改派改时段时都校验，违反返回 `400`。
+- **故障改派**：机器置 `broken` 后不再接受新预约、不能开工；已有预约不自动取消。改派只允许**同农场同型号**且该时段空闲的机器；默认只换机器、保留原时段与 `step_seq`，地块上的作业顺序不变。
+- **忙闲统计**：按 UTC 自然日把未取消预约裁剪合并，`busy_minutes + idle_minutes = 1440`。
+
+### 测试
+```bash
+go test ./...                                  # 纯逻辑单测（区间合并、地块顺序）
+go test -tags integration ./internal/service/  # 全流程集成测试（自动拉起内嵌 PostgreSQL）
+```

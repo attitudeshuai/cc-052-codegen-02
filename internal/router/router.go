@@ -16,6 +16,7 @@ func Setup(
 	activityH *handler.ActivityHandler,
 	inspectionH *handler.InspectionHandler,
 	traceCodeH *handler.TraceCodeHandler,
+	machineH *handler.MachineHandler,
 	healthH *handler.HealthHandler,
 	rdb *redis.Client,
 ) *gin.Engine {
@@ -51,6 +52,24 @@ func Setup(
 
 		// Trace codes
 		v1.POST("/batches/:id/codes", traceCodeH.Generate)
+
+		// Machines (农机档案与报障)
+		v1.POST("/machines", machineH.CreateMachine)
+		v1.GET("/machines", machineH.ListMachines)
+		v1.GET("/machines/:id", machineH.GetMachine)
+		v1.POST("/machines/:id/status", machineH.UpdateMachineStatus)
+		v1.POST("/machines/:id/reassign-remaining", machineH.ReassignRemaining)
+		v1.GET("/machines/:id/daily-stats", machineH.MachineDailyStats)
+		v1.GET("/machines/:id/bookings", machineH.ListMachineBookings)
+
+		// Bookings (按时段预约 / 改派)
+		v1.POST("/bookings", machineH.CreateBooking)
+		v1.GET("/bookings/:id", machineH.GetBooking)
+		v1.POST("/bookings/:id/status", machineH.UpdateBookingStatus)
+		v1.POST("/bookings/:id/reassign", machineH.ReassignBooking)
+
+		// Plot work progress (地块作业进度)
+		v1.GET("/plots/:id/work-progress", machineH.PlotWorkProgress)
 	}
 
 	// Public trace endpoints with rate limiting

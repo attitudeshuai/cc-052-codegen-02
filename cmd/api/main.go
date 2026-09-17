@@ -59,6 +59,8 @@ func main() {
 	codeRepo := repository.NewTraceCodeRepo(db)
 	inputMaterialRepo := repository.NewInputMaterialRepo(db)
 	_ = inputMaterialRepo
+	machineRepo := repository.NewMachineRepo(db)
+	reservationRepo := repository.NewReservationRepo(db)
 
 	// Services
 	farmSvc := service.NewFarmService(farmRepo)
@@ -67,6 +69,8 @@ func main() {
 	activitySvc := service.NewActivityService(activityRepo, batchRepo)
 	inspectionSvc := service.NewInspectionService(inspectionRepo, batchRepo)
 	traceCodeSvc := service.NewTraceCodeService(codeRepo, batchRepo, inspectionRepo, activityRepo, plotRepo, farmRepo)
+	machineSvc := service.NewMachineService(machineRepo, reservationRepo, farmRepo)
+	reservationSvc := service.NewReservationService(reservationRepo, machineRepo, plotRepo)
 
 	// Handlers
 	farmH := handler.NewFarmHandler(farmSvc)
@@ -75,10 +79,12 @@ func main() {
 	activityH := handler.NewActivityHandler(activitySvc)
 	inspectionH := handler.NewInspectionHandler(inspectionSvc)
 	traceCodeH := handler.NewTraceCodeHandler(traceCodeSvc)
+	machineH := handler.NewMachineHandler(machineSvc)
+	reservationH := handler.NewReservationHandler(reservationSvc)
 	healthH := handler.NewHealthHandler(db, rdb)
 
 	// Router
-	r := router.Setup(farmH, plotH, batchH, activityH, inspectionH, traceCodeH, healthH, rdb)
+	r := router.Setup(farmH, plotH, batchH, activityH, inspectionH, traceCodeH, machineH, reservationH, healthH, rdb)
 
 	srv := &http.Server{
 		Addr:    ":" + cfg.ServerPort,

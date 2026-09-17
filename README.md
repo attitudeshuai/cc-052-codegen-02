@@ -38,6 +38,21 @@ POST /api/v1/batches/{id}/inspection        上传检测结果
 POST /api/v1/batches/{id}/codes             生成溯源码（返回数量与短码列表）
 GET  /api/v1/trace/{code}                   公开溯源查询（无需鉴权，限流）
 GET  /api/v1/trace/{code}/qrcode            返回二维码 PNG（带缓存头）
+
+# 农机调度（农忙轮用）
+POST /api/v1/machines                       农机登记（name + model 型号）
+GET  /api/v1/machines?farm_id=              农机列表
+POST /api/v1/machines/{id}/breakdown        报坏：置故障并自动改派给同型号且空闲的机器
+POST /api/v1/machines/{id}/repair           修复恢复可用
+GET  /api/v1/machines/{id}/utilization?date=YYYY-MM-DD   单台当天忙/闲分钟数与时段明细
+GET  /api/v1/farms/{id}/machine-utilization?date=        全场农机当天忙闲汇总
+
+POST /api/v1/reservations                   按时段预约；同机重叠 → 409 并返回撞上的预约
+GET  /api/v1/reservations?machine_id=&plot_id=           预约列表
+POST /api/v1/reservations/{id}/start        开工（前置步骤未完成 / 机器故障 → 409）
+POST /api/v1/reservations/{id}/complete     完工
+POST /api/v1/reservations/{id}/cancel       取消
+GET  /api/v1/plots/{id}/work-progress       这块地的作业做到哪一步（按 seq 排列）
 ```
 
 ## 7. 数据模型

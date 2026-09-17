@@ -50,3 +50,12 @@ func InternalError(c *gin.Context, message string) {
 func Forbidden(c *gin.Context, message string) {
 	Error(c, http.StatusForbidden, message)
 }
+
+// Conflict 409，可携带冲突详情（如撞上的预约）
+func Conflict(c *gin.Context, message string, data interface{}) {
+	c.JSON(http.StatusConflict, APIResponse{
+		Code:    http.StatusConflict,
+		Message: message,
+		Data:    data,
+	})
+}
